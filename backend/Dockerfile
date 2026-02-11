@@ -4,7 +4,7 @@
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY backend/package*.json ./
+COPY package*.json ./
 RUN npm ci --only=production
 
 # Stage 2: Production build
@@ -12,13 +12,13 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Copy package files
-COPY backend/package*.json ./
+COPY package*.json ./
 
-# Install production dependencies only
+# Install production dependencies
 RUN npm ci --only=production
 
 # Copy source code
-COPY backend/ ./src/
+COPY src/ ./src/
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \

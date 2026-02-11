@@ -4,16 +4,18 @@
 # Stage 1: Build
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+
+# Copy all files from root (frontend build context)
 COPY . .
-RUN npm run build
+
+# Install dependencies and build
+RUN npm ci && npm run build
 
 # Stage 2: Production serve
 FROM nginx:alpine AS production
 
 # Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from build stage
 COPY --from=build /app/dist /usr/share/nginx/html

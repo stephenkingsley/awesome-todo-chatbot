@@ -5,7 +5,7 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --prefer-offline --no-audit
 
 # Stage 2: Production build
 FROM node:20-alpine AS production
@@ -15,7 +15,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies
-RUN npm ci --only=production
+RUN npm install --prefer-offline --no-audit --only=production
 
 # Copy source code
 COPY src/ ./src/

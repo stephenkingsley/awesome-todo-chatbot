@@ -16,8 +16,11 @@ COPY public/ ./
 # Copy source files from root context
 COPY src/ ./src/
 
-# Install and build
-RUN npm ci && npm run build
+# Install dependencies (using npm install instead of npm ci to avoid Docker issues)
+RUN npm install --prefer-offline --no-audit
+
+# Build
+RUN npm run build
 
 # Stage 2: Production serve
 FROM nginx:alpine AS production

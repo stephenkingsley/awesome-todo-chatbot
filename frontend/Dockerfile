@@ -16,8 +16,8 @@ COPY public/ ./
 # Copy source files from root context
 COPY src/ ./src/
 
-# Install dependencies (using npm install instead of npm ci to avoid Docker issues)
-RUN npm install --prefer-offline --no-audit
+# Install dependencies - use npm install directly
+RUN npm install
 
 # Build
 RUN npm run build

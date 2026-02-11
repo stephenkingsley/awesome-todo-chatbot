@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { parseTaskFromNaturalLanguage, parseTaskModification } = require('../services/aiService');
+const { parseTask, parseModification, generateSummary } = require('../services/aiManager');
 const Task = require('../models/Task');
 
 /**
@@ -46,11 +46,11 @@ router.post('/', async (req, res) => {
     // 根据意图处理
     switch (intent) {
       case 'create':
-        const newTaskData = await parseTaskFromNaturalLanguage(message);
+        const newTaskData = await parseTask(message);
         const newTask = new Task(newTaskData);
         await newTask.save();
         response = {
-          message: `✅ 已创建任务：「${newTask.title}」`,
+          message: `✅ Task created: "${newTask.title}"`,
           task: newTask.toJSON(),
           action: 'created'
         };
@@ -58,21 +58,21 @@ router.post('/', async (req, res) => {
 
       case 'modify':
         if (currentTask) {
-          const modification = await parseTaskModification(message, currentTask);
+          const modification = await parseModification(message, currentTask);
           const updatedTask = await Task.findByIdAndUpdate(
             currentTask.id,
             modification.updates,
             { new: true }
           );
           response = {
-            message: `✅ 已修改任务：「${updatedTask.title}」`,
+            message: `✅ Task updated: "${updatedTask.title}"`,
             task: updatedTask.toJSON(),
             action: 'modified',
             explanation: modification.explanation
           };
         } else {
           response = {
-            message: '❓ 您想修改哪个任务？请先选择要修改的任务。',
+            message: '❓ Which task would you like to modify? Please select a task first.',
             action: 'need_task_selection'
           };
         }
@@ -123,45 +123,46 @@ router.post('/', async (req, res) => {
 
       case 'summary':
         const allTasks = await Task.find().sort({ createdAt: -1 });
-        const summary = await generateQuickSummary(allTasks);
+        const summaryResult = await generateSummary(allTasks);
         response = {
-          message: summary,
+          message: summaryResult.summaryText,
           action: 'summary',
           tasksCount: {
             total: allTasks.length,
             completed: allTasks.filter(t => t.status === 'completed').length,
             pending: allTasks.filter(t => t.status === 'pending').length
-          }
+          },
+          stats: summaryResult
         };
         break;
 
       case 'list':
         const pendingTasks = await Task.find({ status: 'pending' }).sort({ priority: -1, createdAt: -1 });
         const taskList = pendingTasks.map((t, i) => 
-          `${i + 1}. [${getPriorityIcon(t.priority)}] ${t.title} ${t.dueDate ? `(截止: ${formatDate(t.dueDate)})` : ''}`
+          `${i + 1}. [${getPriorityIcon(t.priority)}] ${t.title} ${t.dueDate ? `(Due: ${formatDate(t.dueDate)})` : ''}`
         ).join('\n');
         
         response = {
-          message: `📋 当前待办任务（${pendingTasks.length}个）：\n\n${taskList || '暂无待办任务'} `,
+          message: `📋 Pending Tasks (${pendingTasks.length}):\n\n${taskList || 'No pending tasks'} `,
           action: 'list',
           tasks: pendingTasks.map(t => t.toJSON())
         };
         break;
 
       default:
-        // 默认尝试解析为创建任务
+        // Default: try to parse as task creation
         try {
-          const taskData = await parseTaskFromNaturalLanguage(message);
+          const taskData = await parseTask(message);
           const task = new Task(taskData);
           await task.save();
           response = {
-            message: `✅ 已创建任务：「${task.title}」`,
+            message: `✅ Task created: "${task.title}"`,
             task: task.toJSON(),
             action: 'created'
           };
         } catch (parseError) {
           response = {
-            message: '🤔 我不太理解您的意思。您可以：\n- 直接输入任务（如"明天下午3点开会"）\n- 说"创建任务"来新建任务\n- 说"总结"查看任务概况',
+            message: '🤔 I don\'t understand. You can:\n- Enter a task directly (e.g., "Meeting at 3pm tomorrow")\n- Say "create task" to make a new task\n- Say "summary" to view task overview',
             action: 'need_help'
           };
         }
@@ -186,14 +187,14 @@ router.post('/create-task', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    const taskData = await parseTaskFromNaturalLanguage(message);
+    const taskData = await parseTask(message);
     const task = new Task(taskData);
     await task.save();
 
     res.json({
       success: true,
       task: task.toJSON(),
-      message: `已创建任务：「${task.title}」`
+      message: `Task created: "${task.title}"`
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -217,7 +218,7 @@ router.post('/modify-task', async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    const modification = await parseTaskModification(message, currentTask);
+    const modification = await parseModification(message, currentTask);
     const updatedTask = await Task.findByIdAndUpdate(
       taskId,
       modification.updates,
@@ -228,7 +229,7 @@ router.post('/modify-task', async (req, res) => {
       success: true,
       task: updatedTask.toJSON(),
       explanation: modification.explanation,
-      message: `已修改任务：「${updatedTask.title}」`
+      message: `Task updated: "${updatedTask.title}"`
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

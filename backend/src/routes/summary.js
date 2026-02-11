@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
-const { generateTaskSummary } = require('../services/aiService');
+const { generateSummary: aiGenerateSummary } = require('../services/aiManager');
 
 /**
  * GET /api/summary
@@ -35,8 +35,8 @@ router.get('/', async (req, res) => {
     
     const tasks = await Task.find(query).sort({ createdAt: -1 });
     
-    // 生成 AI 总结
-    const summary = await generateTaskSummary(tasks);
+    // Generate AI summary
+    const summary = await aiGenerateSummary(tasks);
     
     // 基础统计
     const stats = {

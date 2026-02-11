@@ -2,13 +2,13 @@
 # Multi-stage build for production
 
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:20 AS deps
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
 # Stage 2: Production build
-FROM node:20-alpine AS production
+FROM node:20 AS production
 WORKDIR /app
 
 # Copy package files

@@ -5,44 +5,42 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy frontend build files
-COPY package.json package-lock.json ./
+# Copy build files
+COPY package*.json ./
 COPY vite.config.js ./
 COPY index.html ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 COPY public/ ./
 
-# Copy frontend source
+# Copy source files
 COPY src/ ./src/
 
-# Install dependencies and build
+# Install and build
 RUN npm ci && npm run build
 
 # Stage 2: Production serve
 FROM nginx:alpine AS production
 
-# Copy custom nginx config
+# Copy nginx config
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built assets from build stage
+# Copy built assets
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Use non-root user
+# Security: non-root user
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
     touch /var/run/nginx.pid && \
-    chown -R nginx:nginx /var/run/nginx.pid
+    chown -R nginx:nginx /var/run/nginx.pid && \
+    rm -rf /var/cache/nginx/*
 
 USER nginx
 
-# Expose port
 EXPOSE 80
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1
 
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

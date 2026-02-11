@@ -21,8 +21,8 @@ RUN npm install --only=production
 COPY src/ ./src/
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 -G nodejs && \
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid nodejs --shell /bin/false --create-home nodejs && \
     chown -R nodejs:nodejs /app
 
 # Switch to non-root user

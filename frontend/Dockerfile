@@ -2,7 +2,6 @@
 # Multi-stage build for production
 
 # Stage 1: Build
-# Use full node image instead of alpine for better compatibility
 FROM node:20 AS build
 WORKDIR /app
 
@@ -17,8 +16,10 @@ COPY public/ ./
 # Copy source files from root context
 COPY src/ ./src/
 
-# Install dependencies
-RUN npm install
+# Clean npm cache and install dependencies
+RUN npm cache clean --force
+RUN rm -rf node_modules package-lock.json
+RUN npm install --legacy-peer-deps
 
 # Build
 RUN npm run build

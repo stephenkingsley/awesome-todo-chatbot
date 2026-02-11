@@ -5,8 +5,16 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy all files from root (frontend build context)
-COPY . .
+# Copy frontend build files
+COPY package.json package-lock.json ./
+COPY vite.config.js ./
+COPY index.html ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+COPY public/ ./
+
+# Copy frontend source
+COPY src/ ./src/
 
 # Install dependencies and build
 RUN npm ci && npm run build

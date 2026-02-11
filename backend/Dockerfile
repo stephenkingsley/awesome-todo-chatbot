@@ -1,26 +1,19 @@
 # Backend Dockerfile
-# Multi-stage build for production
+# Simple production build
 
-# Stage 1: Install all dependencies
-FROM node:20 AS deps
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-
-# Stage 2: Production
-FROM node:20 AS production
+FROM node:20
 WORKDIR /app
 
-# Copy package files
+# Copy package files first
 COPY package*.json ./
 
-# Copy installed dependencies from deps stage (IMPORTANT: do NOT run npm install here!)
-COPY --from=deps /app/node_modules ./node_modules
+# Install dependencies
+RUN npm install --only=production
 
 # Copy source code
 COPY src/ ./src/
 
-# Create non-root user for security (Debian/Ubuntu syntax)
+# Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 --ingroup nodejs --home /app --no-create-home nodejs && \
     chown -R nodejs:nodejs /app

@@ -1,0 +1,103 @@
+# Docker Compose configuration for AI Todo List
+# Usage: docker-compose up -d
+
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai-todo-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/ai-todo
+      - AI_PROVIDER=${AI_PROVIDER:-auto}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - MINIMAX_API_KEY=${MINIMAX_API_KEY:-}
+      - MINIMAX_API_GROUP=${MINIMAX_API_GROUP:-default}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ai-todo-network
+    volumes:
+      - backend-logs:/app/logs
+
+  # Frontend Web Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-todo-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    networks:
+      - ai-todo-network
+    volumes:
+      - frontend-nginx:/var/log/nginx
+
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: ai-todo-mongo
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=ai-todo
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai-todo-network
+
+  # Mongo Express (optional database UI)
+  mongo-express:
+    image: mongo-express:1.0
+    container_name: ai-todo-mongo-express
+    restart: unless-stopped
+    ports:
+      - "${MONGO_EXPRESS_PORT:-8081}:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongo:27017/
+      - ME_CONFIG_BASICAUTH_USERNAME=${ME_USERNAME:-admin}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_PASSWORD:-admin}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - ai-todo-network
+
+networks:
+  ai-todo-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+    driver: local
+  mongo-config:
+    driver: local
+  backend-logs:
+    driver: local
+  frontend-nginx:
+    driver: local

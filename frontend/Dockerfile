@@ -5,7 +5,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy build files
+# Copy build files from root context
 COPY package*.json ./
 COPY vite.config.js ./
 COPY index.html ./
@@ -13,7 +13,7 @@ COPY tailwind.config.js ./
 COPY postcss.config.js ./
 COPY public/ ./
 
-# Copy source files
+# Copy source files from root context
 COPY src/ ./src/
 
 # Install and build
@@ -22,7 +22,7 @@ RUN npm ci && npm run build
 # Stage 2: Production serve
 FROM nginx:alpine AS production
 
-# Copy nginx config
+# Copy nginx config from frontend directory
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets

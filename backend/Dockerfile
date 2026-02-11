@@ -14,7 +14,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Copy installed dependencies from deps stage
+# Copy installed dependencies from deps stage (IMPORTANT: do NOT run npm install here!)
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy source code
